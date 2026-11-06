@@ -39,10 +39,12 @@ async function cloudSave(){
   const localA=new Set(accounts.map(x=>x.id)),localC=new Set(contents.map(x=>x.id));
   const deleteA=remoteA.data.filter(x=>!localA.has(x.id)).map(x=>x.id);
   const deleteC=remoteC.data.filter(x=>!localC.has(x.id)).map(x=>x.id);
-  for(const id of deleteC){const q=await sb.from('contents').delete().eq('owner_id',user.id).eq('id',id);if(q.error)return alert('Hapus content cloud gagal: '+q.error.message)}
-  for(const id of deleteA){const q=await sb.from('accounts').delete().eq('owner_id',user.id).eq('id',id);if(q.error)return alert('Hapus account cloud gagal: '+q.error.message)}
+  // Upsert first: avoid deleting remote records before writes succeed.
   if(accounts.length){const q=await sb.from('accounts').upsert(accounts);if(q.error)return alert('Accounts: '+q.error.message)}
   if(contents.length){const q=await sb.from('contents').upsert(contents);if(q.error)return alert('Content: '+q.error.message)}
+  // Deletions are last; sync is still non-transactional.
+  for(const id of deleteC){const q=await sb.from('contents').delete().eq('owner_id',user.id).eq('id',id);if(q.error)return alert('Hapus content cloud gagal: '+q.error.message)}
+  for(const id of deleteA){const q=await sb.from('accounts').delete().eq('owner_id',user.id).eq('id',id);if(q.error)return alert('Hapus account cloud gagal: '+q.error.message)}
   document.getElementById('cloudStatus').textContent='Cloud sync selesai';
   alert('Sinkronisasi selesai: data lokal dikirim dan penghapusan disinkronkan.');
  } catch(e) { document.getElementById('cloudStatus').textContent='Sync gagal: '+e.message;alert('Cloud save gagal: '+e.message); }

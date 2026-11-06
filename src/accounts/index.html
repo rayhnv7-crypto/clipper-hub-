@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clipper Hub — Accounts</title>
+<style>
+:root{color-scheme:dark;--bg:#101514;--panel:#171e1b;--line:#29352f;--text:#e8f0eb;--muted:#91a49a;--accent:#42d6a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,Segoe UI,sans-serif;padding:28px}
+main{max-width:1000px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{margin:0;font-size:25px}p{color:var(--muted);margin:5px 0 22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted)}input,select,textarea{width:100%;background:#0f1412;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}textarea{min-height:70px}button{border:1px solid var(--line);background:#202b25;color:var(--text);border-radius:8px;padding:10px 14px;cursor:pointer;font:inherit}button.primary{background:var(--accent);color:#062116;border-color:var(--accent);font-weight:700}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.wide{grid-column:1/-1}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}.status{padding:4px 8px;border-radius:99px;background:#26372f;color:#9be8c5;font-size:12px}.empty{color:var(--muted);text-align:center;padding:25px}.error{color:#ff9b9b}.small{font-size:12px;color:var(--muted)}@media(max-width:600px){body{padding:14px}form{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<div class="top"><div><h1>Accounts</h1><p>Kelola akun channel Clipper Hub.</p></div><div class="actions"><button id="export">Export JSON</button><label style="display:flex;align-items:center"><input id="importFile" type="file" accept=".json,application/json" hidden><button id="import">Import JSON</button></label></div></div>
+<section class="panel"><h3 id="formTitle">Tambah akun</h3><form id="accountForm">
+<label>Platform<select name="platform"><option>TikTok</option><option>Instagram</option><option>YouTube</option><option>Other</option></select></label>
+<label>Handle *<input name="handle" placeholder="@namaakun" required></label>
+<label>Nama tampilan<input name="displayName" placeholder="Nama channel"></label>
+<label>Status<select name="status"><option value="active">Active</option><option value="paused">Paused</option><option value="restricted">Restricted</option></select></label>
+<label class="wide">Catatan<textarea name="notes" placeholder="Catatan akun (opsional)"></textarea></label>
+<div class="actions wide"><button class="primary" type="submit">Simpan akun</button><button type="button" id="cancel" hidden>Batal edit</button><span id="message" class="small"></span></div>
+</form></section>
+<section class="panel"><div class="top"><h3>Daftar akun <span id="count" class="small"></span></h3><input id="search" placeholder="Cari handle / platform…" style="max-width:260px"></div><div class="table-wrap"><table><thead><tr><th>Platform</th><th>Akun</th><th>Status</th><th>Updated</th><th>Aksi</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<p class="small">Data tersimpan di localStorage browser ini. Belum tersinkron ke cloud/database.</p>
+</main>
+<script type="module">
+import {listAccounts,createAccount,updateAccount,deleteAccount,exportAccounts,importAccounts} from "./accounts.js";
+const form=document.querySelector("#accountForm"),rows=document.querySelector("#rows"),message=document.querySelector("#message"),search=document.querySelector("#search"),cancel=document.querySelector("#cancel");
+let editing=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function render(){const q=search.value.toLowerCase();const all=listAccounts();const filtered=all.filter(a=>(a.handle+" "+a.platform+" "+a.displayName).toLowerCase().includes(q));document.querySelector("#count").textContent="("+all.length+")";rows.innerHTML=filtered.length?filtered.map(a=>`<tr><td>${esc(a.platform)}</td><td><strong>${esc(a.handle)}</strong><div class="small">${esc(a.displayName)}</div></td><td><span class="status">${esc(a.status)}</span></td><td class="small">${new Date(a.updatedAt).toLocaleDateString("id-ID")}</td><td><div class="actions"><button data-edit="${esc(a.id)}">Edit</button><button data-delete="${esc(a.id)}">Hapus</button></div></td></tr>`).join(""):'<tr><td colspan="5" class="empty">Belum ada akun. Tambahkan akun pertama.</td></tr>';}
+function reset(){editing=null;form.reset();document.querySelector("#formTitle").textContent="Tambah akun";cancel.hidden=true;}
+form.addEventListener("submit",e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));try{editing?updateAccount(editing,d):createAccount(d);message.textContent="Akun tersimpan.";reset();render();}catch(err){message.textContent=err.message;message.className="error";}});
+rows.addEventListener("click",e=>{const edit=e.target.closest("[data-edit]");const del=e.target.closest("[data-delete]");if(edit){const a=listAccounts().find(x=>x.id===edit.dataset.edit);if(!a)return;editing=a.id;for(const k of ["platform","handle","displayName","status","notes"])form.elements[k].value=a[k]||"";document.querySelector("#formTitle").textContent="Edit akun";cancel.hidden=false;message.textContent="";}if(del){const a=listAccounts().find(x=>x.id===del.dataset.delete);if(a&&confirm("Hapus akun "+a.handle+"?")){deleteAccount(a.id);render();}}});
+cancel.addEventListener("click",reset);search.addEventListener("input",render);
+document.querySelector("#export").addEventListener("click",()=>{const blob=new Blob([exportAccounts()],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="clipper-hub-accounts.json";a.click();URL.revokeObjectURL(url);});
+document.querySelector("#import").addEventListener("click",()=>document.querySelector("#importFile").click());
+document.querySelector("#importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const n=importAccounts(await f.text());message.textContent=n+" akun berhasil diimpor (merge).";render();}catch(err){message.textContent=err.message;message.className="error";}e.target.value="";});
+render();
+</script></body></html>

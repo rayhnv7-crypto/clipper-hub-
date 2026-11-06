@@ -65,5 +65,9 @@ function seoAddTask(){let task=document.getElementById('seoTaskInput').value.tri
 function seoToggle(id){let x=db.seoTasks.find(t=>t.id===id);x.status=x.status==='Done'?'Todo':x.status==='Todo'?'In Progress':'Done';save()}
 function seoDelTask(id){db.seoTasks=db.seoTasks.filter(x=>x.id!==id);save()}
 
+function seoGscPanel(){return '<section class="card"><h3>Google Search Console — Performance</h3><p class="muted">Integrasi API belum memiliki OAuth Google yang dikonfigurasi. Ini panel siap integrasi; bukan data live.</p><div class="grid"><div class="card">Clicks<div class="num">—</div></div><div class="card">Impressions<div class="num">—</div></div><div class="card">CTR<div class="num">—</div></div><div class="card">Avg Position<div class="num">—</div></div></div><p>Data akan ditampilkan setelah koneksi Google Search Console dan pemilihan property selesai.</p></section>'}
+const seoRender=render;
+render=function(){seoRender();if(page==='SEO'){document.getElementById('view').insertAdjacentHTML('afterbegin',seoGscPanel())}};
+
 render();
 </script></body></html>

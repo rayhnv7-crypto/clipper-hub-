@@ -4,22 +4,25 @@
 const sb=window.supabase.createClient('https://zfrvrqqhrwdwcymnarrh.supabase.co','sb_publishable_-72tvtv3X_EFAAvctRO_jA_PVEl9DEh');
 async function authAction(mode){
  try {
- const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
- let result;
- if(mode==='signup'){if(!email||!password)return alert('Email dan password wajib diisi');result=await sb.auth.signUp({email,password});}
- else if(mode==='login'){if(!email||!password)return alert('Email dan password wajib diisi');result=await sb.auth.signInWithPassword({email,password});}
- else result=await sb.auth.signOut();
- if(result.error){document.getElementById('cloudStatus').textContent='Error: '+result.error.message;return alert(result.error.message)}
- const {data}=await sb.auth.getUser();document.getElementById('cloudStatus').textContent=data.user?'Login: '+data.user.email:'Belum login';
- if(mode==='logout')alert('Logout berhasil');else if(mode==='signup'&&!data.user)alert('Pendaftaran terkirim. Periksa email untuk konfirmasi.');else alert('Login berhasil');
+  const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
+  let result;
+  if(mode==='signup'){if(!email||!password)return alert('Email dan password wajib diisi');result=await sb.auth.signUp({email,password});}
+  else if(mode==='login'){if(!email||!password)return alert('Email dan password wajib diisi');result=await sb.auth.signInWithPassword({email,password});}
+  else result=await sb.auth.signOut();
+  if(result.error){document.getElementById('cloudStatus').textContent='Error: '+result.error.message;return alert(result.error.message)}
+  const {data}=await sb.auth.getUser();document.getElementById('cloudStatus').textContent=data.user?'Login: '+data.user.email:'Belum login';
+  if(mode==='logout')alert('Logout berhasil');else if(mode==='signup'&&!data.user)alert('Pendaftaran terkirim. Periksa email untuk konfirmasi.');else alert('Login berhasil');
+ } catch(e) { document.getElementById('cloudStatus').textContent='Error: '+e.message; alert('Auth gagal: '+e.message); }
 }
+sb.auth.onAuthStateChange((_event,session)=>{document.getElementById('cloudStatus').textContent=session?.user?'Login: '+session.user.email:'Belum login';});
 async function cloudLoad(){
- const {data:{user},error:authError}=await sb.auth.getUser();if(authError||!user)return alert('Login terlebih dahulu');
- const [a,c]=await Promise.all([sb.from('accounts').select('*').eq('owner_id',user.id),sb.from('contents').select('*').eq('owner_id',user.id)]);
- if(a.error||c.error)return alert(a.error?.message||c.error?.message);
- db.accounts=a.data.map(x=>({id:x.id,platform:x.platform,handle:x.handle,name:x.display_name,status:x.status}));
- db.content=c.data.map(x=>({id:x.id,title:x.title,accountId:x.account_id,status:x.status}));
- save();document.getElementById('cloudStatus').textContent='Cloud dimuat: '+user.email;alert('Data cloud berhasil dimuat');
+ try {
+  const {data:{user},error:authError}=await sb.auth.getUser();if(authError||!user)return alert('Login terlebih dahulu');
+  const [a,c]=await Promise.all([sb.from('accounts').select('*').eq('owner_id',user.id),sb.from('contents').select('*').eq('owner_id',user.id)]);
+  if(a.error||c.error)return alert(a.error?.message||c.error?.message);
+  db.accounts=a.data.map(x=>({id:x.id,platform:x.platform,handle:x.handle,name:x.display_name,status:x.status}));
+  db.content=c.data.map(x=>({id:x.id,title:x.title,accountId:x.account_id,status:x.status}));
+  save();document.getElementById('cloudStatus').textContent='Cloud dimuat: '+user.email;alert('Data cloud berhasil dimuat');
  } catch(e) { alert('Cloud load gagal: '+e.message); }
 }
 async function cloudSave(){

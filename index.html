@@ -28,9 +28,11 @@ async function cloudLoad(){
 async function cloudSave(){
  try {
   const {data:{user},error}=await sb.auth.getUser();if(error||!user)return alert('Login terlebih dahulu');
+  let wr=await sb.from('workspaces').select('id').eq('owner_id',user.id).limit(1).maybeSingle();if(wr.error)return alert('Workspace: '+wr.error.message);if(!wr.data){wr=await sb.from('workspaces').insert({owner_id:user.id,name:'Clipper Hub'}).select('id').single();if(wr.error)return alert('Buat workspace: '+wr.error.message);await sb.from('workspace_members').upsert({workspace_id:wr.data.id,user_id:user.id,role:'owner'});}
+  const workspaceId=wr.data.id;
   if(!confirm('Sinkronisasi akan mengirim perubahan lokal dan menghapus data cloud milik akun ini yang sudah dihapus secara lokal. Lanjutkan?'))return;
-  const accounts=db.accounts.map(x=>({id:x.id,owner_id:user.id,platform:x.platform,handle:x.handle,display_name:x.name||null,status:x.status}));
-  const contents=db.content.map(x=>({id:x.id,owner_id:user.id,account_id:x.accountId||null,title:x.title,status:x.status}));
+  const accounts=db.accounts.map(x=>({id:x.id,owner_id:user.id,workspace_id:workspaceId,platform:x.platform,handle:x.handle,display_name:x.name||null,status:x.status}));
+  const contents=db.content.map(x=>({id:x.id,owner_id:user.id,workspace_id:workspaceId,account_id:x.accountId||null,title:x.title,status:x.status}));
   const [remoteA,remoteC]=await Promise.all([
    sb.from('accounts').select('id').eq('owner_id',user.id),
    sb.from('contents').select('id').eq('owner_id',user.id)
